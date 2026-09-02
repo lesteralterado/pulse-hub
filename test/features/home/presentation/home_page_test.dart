@@ -7,12 +7,17 @@ import 'package:pulsehub/features/auth/application/auth_providers.dart';
 import 'package:pulsehub/features/auth/domain/app_user.dart';
 import 'package:pulsehub/features/chat/application/chat_providers.dart';
 import 'package:pulsehub/features/home/presentation/home_page.dart';
+import 'package:pulsehub/features/meetings/application/meeting_providers.dart';
 
 import '../../../helpers/fake_auth_service.dart';
 import '../../../helpers/fake_chat_repository.dart';
+import '../../../helpers/fake_meeting_repository.dart';
 
 void main() {
-  Future<void> pumpHomePage(WidgetTester tester) async {
+  Future<void> pumpHomePage(
+    WidgetTester tester, {
+    FakeMeetingRepository? meetingRepository,
+  }) async {
     final fakeAuthService = FakeAuthService(
       initialUser: const AppUser(
         id: 'u1',
@@ -21,8 +26,10 @@ void main() {
       ),
     );
     final fakeChatRepository = FakeChatRepository();
+    final fakeMeetingRepository = meetingRepository ?? FakeMeetingRepository();
     addTearDown(fakeAuthService.dispose);
     addTearDown(fakeChatRepository.dispose);
+    addTearDown(fakeMeetingRepository.dispose);
 
     final router = GoRouter(
       initialLocation: AppConstants.routeHome,
@@ -53,6 +60,7 @@ void main() {
         overrides: [
           authServiceProvider.overrideWithValue(fakeAuthService),
           chatRepositoryProvider.overrideWithValue(fakeChatRepository),
+          meetingRepositoryProvider.overrideWithValue(fakeMeetingRepository),
         ],
         child: MaterialApp.router(routerConfig: router),
       ),
@@ -104,5 +112,22 @@ void main() {
       find.text('No conversations yet. Start one with the button below.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('tapping Meetings opens the meetings list', (tester) async {
+    await pumpHomePage(tester);
+
+    await tester.tap(find.widgetWithText(ActionChip, 'Meetings'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(AppBar, 'Meetings'), findsOneWidget);
+    expect(find.text('No meetings scheduled yet.'), findsOneWidget);
+  });
+
+  testWidgets('shows an empty state when not going to any meetings',
+      (tester) async {
+    await pumpHomePage(tester);
+
+    expect(find.text('No meetings scheduled.'), findsOneWidget);
   });
 }

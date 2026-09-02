@@ -6,6 +6,10 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/empty_state_card.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../chat/presentation/conversations_page.dart';
+import '../../meetings/application/meeting_providers.dart';
+import '../../meetings/domain/meeting.dart';
+import '../../meetings/presentation/meeting_detail_page.dart';
+import '../../meetings/presentation/meetings_page.dart';
 
 /// The user's personalized PulseHub feed (section 7 of the brief). The
 /// data-backed sections below (feed, announcements, meetings, learning,
@@ -18,6 +22,7 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(currentUserProvider);
     final displayName = currentUser?.email.split('@').first ?? 'there';
+    final meetingsAsync = ref.watch(meetingsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppConstants.appName)),
@@ -50,11 +55,7 @@ class HomePage extends ConsumerWidget {
             message: 'No announcements right now.',
           ),
           const SizedBox(height: 12),
-          const EmptyStateCard(
-            title: 'Upcoming meetings',
-            icon: Icons.event_outlined,
-            message: 'No meetings scheduled.',
-          ),
+          _UpcomingMeetingsSection(meetingsAsync: meetingsAsync),
           const SizedBox(height: 12),
           const EmptyStateCard(
             title: 'Learning recommendations',
@@ -91,6 +92,69 @@ class HomePage extends ConsumerWidget {
   }
 }
 
+class _UpcomingMeetingsSection extends StatelessWidget {
+  const _UpcomingMeetingsSection({required this.meetingsAsync});
+
+  final AsyncValue<List<Meeting>> meetingsAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    return meetingsAsync.when(
+      loading: () => const EmptyStateCard(
+        title: 'Upcoming meetings',
+        icon: Icons.event_outlined,
+        message: 'Loading...',
+      ),
+      error: (error, _) => const EmptyStateCard(
+        title: 'Upcoming meetings',
+        icon: Icons.event_outlined,
+        message: 'No meetings scheduled.',
+      ),
+      data: (meetings) {
+        final upcoming = meetings
+            .where((m) => m.isGoing && (m.status == 'scheduled' || m.isLive))
+            .take(3)
+            .toList();
+        if (upcoming.isEmpty) {
+          return const EmptyStateCard(
+            title: 'Upcoming meetings',
+            icon: Icons.event_outlined,
+            message: 'No meetings scheduled.',
+          );
+        }
+        final theme = Theme.of(context);
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Upcoming meetings', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 8),
+                for (final meeting in upcoming)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      meeting.isLive ? Icons.videocam : Icons.event_outlined,
+                      color: meeting.isLive ? theme.colorScheme.error : null,
+                    ),
+                    title: Text(meeting.title),
+                    subtitle: Text(meeting.displayStatus),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MeetingDetailPage(meeting: meeting),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -123,15 +187,11 @@ class _QuickActions extends StatelessWidget {
         _QuickActionChip(
           icon: Icons.event_outlined,
           label: 'Meetings',
-          onTap: () => _showComingSoon(context, 'Meetings'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const MeetingsPage()),
+          ),
         ),
       ],
-    );
-  }
-
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature is coming in a future update.')),
     );
   }
 }
