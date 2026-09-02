@@ -6,4 +6,9 @@ import '../domain/user_profile.dart';
 /// Supabase project — same reasoning as [AuthService].
 abstract class ProfileRepository {
   Future<Result<UserProfile>> getProfile(String userId);
+
+  /// Matches profiles by username, for "start a conversation" style
+  /// pickers. Excluding the current user from the results is the
+  /// caller's job, not this method's.
+  Future<Result<List<UserProfile>>> searchProfiles(String query);
 }

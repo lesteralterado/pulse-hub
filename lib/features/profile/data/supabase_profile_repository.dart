@@ -27,6 +27,20 @@ class SupabaseProfileRepository implements ProfileRepository {
     }
   }
 
+  @override
+  Future<Result<List<UserProfile>>> searchProfiles(String query) async {
+    try {
+      final rows = await SupabaseService.client
+          .from('profiles')
+          .select()
+          .ilike('username', '%$query%')
+          .limit(20);
+      return Result.success(rows.map(UserProfile.fromMap).toList());
+    } catch (error) {
+      return Result.failure(mapProfileError(error));
+    }
+  }
+
   /// Extracted as a standalone function so error-mapping can be unit
   /// tested without needing a live Supabase connection.
   static AppException mapProfileError(Object error) {

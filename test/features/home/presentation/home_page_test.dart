@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:pulsehub/core/constants/app_constants.dart';
 import 'package:pulsehub/features/auth/application/auth_providers.dart';
 import 'package:pulsehub/features/auth/domain/app_user.dart';
+import 'package:pulsehub/features/chat/application/chat_providers.dart';
 import 'package:pulsehub/features/home/presentation/home_page.dart';
 
 import '../../../helpers/fake_auth_service.dart';
+import '../../../helpers/fake_chat_repository.dart';
 
 void main() {
   Future<void> pumpHomePage(WidgetTester tester) async {
@@ -18,7 +20,9 @@ void main() {
         isEmailVerified: true,
       ),
     );
+    final fakeChatRepository = FakeChatRepository();
     addTearDown(fakeAuthService.dispose);
+    addTearDown(fakeChatRepository.dispose);
 
     final router = GoRouter(
       initialLocation: AppConstants.routeHome,
@@ -46,7 +50,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [authServiceProvider.overrideWithValue(fakeAuthService)],
+        overrides: [
+          authServiceProvider.overrideWithValue(fakeAuthService),
+          chatRepositoryProvider.overrideWithValue(fakeChatRepository),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -86,14 +93,15 @@ void main() {
     expect(find.text('community-page'), findsOneWidget);
   });
 
-  testWidgets('tapping Messages shows a coming-soon message', (tester) async {
+  testWidgets('tapping Messages opens the conversations list', (tester) async {
     await pumpHomePage(tester);
 
     await tester.tap(find.widgetWithText(ActionChip, 'Messages'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
+    expect(find.widgetWithText(AppBar, 'Messages'), findsOneWidget);
     expect(
-      find.text('Messages is coming in a future update.'),
+      find.text('No conversations yet. Start one with the button below.'),
       findsOneWidget,
     );
   });

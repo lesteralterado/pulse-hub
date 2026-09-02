@@ -9,7 +9,7 @@ if (-not (Test-Path $flutterExe)) { $flutterExe = "flutter" }
 $stateFile = Join-Path $PSScriptRoot "gate_state.json"
 $logFile = Join-Path $PSScriptRoot "last_test_output.log"
 $ceiling = 20
-$timeoutMs = 5 * 60 * 1000
+$timeoutMs = 8 * 60 * 1000
 
 $attempt = 0
 if (Test-Path $stateFile) {
@@ -32,12 +32,20 @@ function Save-Attempt($count) {
 # ReadToEndAsync() waits forever even after the real work is done.
 # Routing through `cmd.exe /c ... > file 2>&1` uses a real file handle
 # instead, which has no such "wait for every handle to close" semantics.
+#
+# --concurrency=1: the default (multiple worker processes racing for CPU
+# and disk) has repeatedly stalled indefinitely on this machine once the
+# suite grew past ~100 tests, most likely OneDrive's background sync
+# competing for I/O over the same files (observed pegging a full CPU core
+# for extended periods). Single-threaded is slower per run but has been
+# reliable where concurrent runs were not; revisit if the project ever
+# moves out of a synced folder.
 if (Test-Path $logFile) { Remove-Item $logFile -Force }
 # No quoting here: cmd.exe's `/c` parsing is notoriously unreliable with
 # nested quotes, and none of this project's paths contain spaces.
 $psi = New-Object System.Diagnostics.ProcessStartInfo
 $psi.FileName = "cmd.exe"
-$psi.Arguments = "/c $flutterExe test > $logFile 2>&1"
+$psi.Arguments = "/c $flutterExe test --concurrency=1 > $logFile 2>&1"
 $psi.UseShellExecute = $false
 $psi.WorkingDirectory = $projectRoot
 

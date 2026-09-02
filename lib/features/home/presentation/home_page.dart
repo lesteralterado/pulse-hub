@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/empty_state_card.dart';
 import '../../auth/application/auth_providers.dart';
+import '../../chat/presentation/conversations_page.dart';
 
 /// The user's personalized PulseHub feed (section 7 of the brief). The
 /// data-backed sections below (feed, announcements, meetings, learning,
@@ -105,7 +106,9 @@ class _QuickActions extends StatelessWidget {
         _QuickActionChip(
           icon: Icons.chat_bubble_outline,
           label: 'Messages',
-          onTap: () => _showComingSoon(context, 'Messages'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ConversationsPage()),
+          ),
         ),
         _QuickActionChip(
           icon: Icons.school_outlined,

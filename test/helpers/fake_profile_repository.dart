@@ -10,7 +10,12 @@ class FakeProfileRepository implements ProfileRepository {
   /// Overrides the default success result of the next call.
   Result<UserProfile>? result;
 
+  /// Profiles returned by [searchProfiles], regardless of query.
+  List<UserProfile> searchResults = [];
+  Result<List<UserProfile>>? searchProfilesResult;
+
   int getProfileCallCount = 0;
+  int searchProfilesCallCount = 0;
 
   @override
   Future<Result<UserProfile>> getProfile(String userId) async {
@@ -26,5 +31,11 @@ class FakeProfileRepository implements ProfileRepository {
             createdAt: DateTime.utc(2026, 1, 1),
           ),
         );
+  }
+
+  @override
+  Future<Result<List<UserProfile>>> searchProfiles(String query) async {
+    searchProfilesCallCount++;
+    return searchProfilesResult ?? Result.success(searchResults);
   }
 }
