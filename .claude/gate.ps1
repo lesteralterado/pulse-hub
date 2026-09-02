@@ -25,32 +25,30 @@ function Save-Attempt($count) {
     Set-Content -Path $stateFile -Value (@{ attempt = $count } | ConvertTo-Json -Compress) -Encoding utf8
 }
 
-# Uses System.Diagnostics.Process directly rather than Start-Process:
-# 1) Start-Process -PassThru has a known Windows PowerShell 5.1 bug where
-#    .ExitCode comes back empty even after WaitForExit() -- confirmed by
-#    direct testing on this machine (a trivial `cmd /c exit 3` still came
-#    back as ""). That would make this gate silently misreport pass/fail.
-# 2) Redirecting to files (not a pipe / Out-String) avoids a separate hang
-#    this machine hit: a stray child dart process kept a pipe handle open,
-#    so nothing reading that pipe ever saw EOF.
+# Deliberately NOT using ProcessStartInfo's RedirectStandardOutput/-Error
+# (.NET pipes). On this machine that hung indefinitely: `flutter test`
+# spawns worker processes for each test file, those inherit the pipe
+# handles, and if any of them is slow to release its handle,
+# ReadToEndAsync() waits forever even after the real work is done.
+# Routing through `cmd.exe /c ... > file 2>&1` uses a real file handle
+# instead, which has no such "wait for every handle to close" semantics.
+if (Test-Path $logFile) { Remove-Item $logFile -Force }
+# No quoting here: cmd.exe's `/c` parsing is notoriously unreliable with
+# nested quotes, and none of this project's paths contain spaces.
 $psi = New-Object System.Diagnostics.ProcessStartInfo
-$psi.FileName = $flutterExe
-$psi.Arguments = "test"
+$psi.FileName = "cmd.exe"
+$psi.Arguments = "/c $flutterExe test > $logFile 2>&1"
 $psi.UseShellExecute = $false
-$psi.RedirectStandardOutput = $true
-$psi.RedirectStandardError = $true
 $psi.WorkingDirectory = $projectRoot
 
 $proc = [System.Diagnostics.Process]::Start($psi)
-$stdoutTask = $proc.StandardOutput.ReadToEndAsync()
-$stderrTask = $proc.StandardError.ReadToEndAsync()
 $finished = $proc.WaitForExit($timeoutMs)
 
 if (-not $finished) {
     try { $proc.Kill($true) } catch {}
     Get-Process -Name "dart", "dartvm", "dartaotruntime" -ErrorAction SilentlyContinue |
         Stop-Process -Force -ErrorAction SilentlyContinue
-    Set-Content -Path $logFile -Value "flutter test timed out after 5 minutes and was killed." -Encoding utf8
+    Add-Content -Path $logFile -Value "`n[gate] flutter test timed out after 5 minutes and was killed." -Encoding utf8
 
     $attempt += 1
     Save-Attempt $attempt
@@ -65,9 +63,6 @@ if (-not $finished) {
     exit 2
 }
 
-$stdout = $stdoutTask.GetAwaiter().GetResult()
-$stderr = $stderrTask.GetAwaiter().GetResult()
-Set-Content -Path $logFile -Value ($stdout + "`n" + $stderr) -Encoding utf8
 $testExit = $proc.ExitCode
 
 if ($testExit -eq 0) {

@@ -27,3 +27,15 @@ final myProfileProvider = FutureProvider<UserProfile>((ref) async {
     failure: (error) => throw error,
   );
 });
+
+/// Any user's profile by id — used when viewing a post/comment author from
+/// the community feed, distinct from [myProfileProvider] which is always
+/// the signed-in user's own.
+final profileByIdProvider =
+    FutureProvider.autoDispose.family<UserProfile, String>((ref, userId) async {
+  final result = await ref.watch(profileRepositoryProvider).getProfile(userId);
+  return result.when(
+    success: (profile) => profile,
+    failure: (error) => throw error,
+  );
+});
