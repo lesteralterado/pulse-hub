@@ -1,22 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../config/startup_info.dart';
-import '../constants/app_constants.dart';
+import '../../../core/config/startup_info.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../auth/application/auth_providers.dart';
 
-/// Temporary Phase 1 root screen: proves theme, routing, Riverpod, env
-/// config and Supabase startup are wired together correctly. Replaced by
-/// the real bottom-navigation shell in Phase 3.
+/// Temporary Phase 1/2 root screen: proves theme, routing, Riverpod, env
+/// config, Supabase startup and auth session state are wired together
+/// correctly. Replaced by the real bottom-navigation shell in Phase 3.
 class FoundationStatusPage extends ConsumerWidget {
   const FoundationStatusPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final startupInfo = ref.watch(startupInfoProvider);
+    final currentUser = ref.watch(currentUserProvider);
+    final isSigningOut = ref.watch(authControllerProvider).isLoading;
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppConstants.appName)),
+      appBar: AppBar(
+        title: const Text(AppConstants.appName),
+        actions: [
+          if (currentUser != null)
+            IconButton(
+              tooltip: 'Sign out',
+              icon: isSigningOut
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.logout),
+              onPressed: isSigningOut
+                  ? null
+                  : () => ref.read(authControllerProvider.notifier).signOut(),
+            ),
+        ],
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -35,6 +56,10 @@ class FoundationStatusPage extends ConsumerWidget {
                     value: startupInfo.supabaseConfigured
                         ? 'Connected'
                         : 'Not configured',
+                  ),
+                  _StatusRow(
+                    label: 'Signed in as',
+                    value: currentUser?.email ?? 'nobody',
                   ),
                 ],
               ),

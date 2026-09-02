@@ -55,4 +55,5 @@ app.*.map.json
 # Loop-engineering gate state (ephemeral, machine-local)
 .claude/gate_state.json
 .claude/last_test_output.log
+.claude/last_test_output.log.*.tmp
 

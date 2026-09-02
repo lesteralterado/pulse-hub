@@ -42,17 +42,18 @@ Future<void> main() async {
   );
 }
 
-class PulseHubApp extends StatelessWidget {
+class PulseHubApp extends ConsumerWidget {
   const PulseHubApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
     return MaterialApp.router(
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      routerConfig: AppRouter.router,
+      routerConfig: router,
     );
   }
 }
