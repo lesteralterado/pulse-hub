@@ -9,4 +9,11 @@ abstract final class AppConstants {
   static const String routeSignUp = '/sign-up';
   static const String routeForgotPassword = '/forgot-password';
   static const String routeVerifyEmail = '/verify-email';
+
+  /// Bottom-navigation destinations. Home lives at [routeRoot].
+  static const String routeHome = routeRoot;
+  static const String routeCommunity = '/community';
+  static const String routeLearn = '/learn';
+  static const String routeDashboard = '/dashboard';
+  static const String routeProfile = '/profile';
 }

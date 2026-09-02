@@ -5,8 +5,10 @@ import 'package:pulsehub/core/config/startup_info.dart';
 import 'package:pulsehub/core/router/app_router.dart';
 import 'package:pulsehub/features/auth/application/auth_providers.dart';
 import 'package:pulsehub/features/auth/domain/app_user.dart';
+import 'package:pulsehub/features/profile/application/profile_providers.dart';
 
 import '../../helpers/fake_auth_service.dart';
+import '../../helpers/fake_profile_repository.dart';
 
 void main() {
   Future<FakeAuthService> pumpApp(
@@ -14,12 +16,14 @@ void main() {
     AppUser? initialUser,
   }) async {
     final fakeAuthService = FakeAuthService(initialUser: initialUser);
+    final fakeProfileRepository = FakeProfileRepository();
     addTearDown(fakeAuthService.dispose);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           authServiceProvider.overrideWithValue(fakeAuthService),
+          profileRepositoryProvider.overrideWithValue(fakeProfileRepository),
           startupInfoProvider.overrideWithValue(
             const StartupInfo(environment: 'test', supabaseConfigured: true),
           ),
@@ -42,8 +46,7 @@ void main() {
     expect(find.text('Welcome back'), findsOneWidget);
   });
 
-  testWidgets('authenticated users land on the foundation status page',
-      (tester) async {
+  testWidgets('authenticated users land on the home tab', (tester) async {
     await pumpApp(
       tester,
       initialUser: const AppUser(
@@ -53,11 +56,11 @@ void main() {
       ),
     );
 
-    expect(find.text('Foundation ready'), findsOneWidget);
-    expect(find.text('user@example.com'), findsOneWidget);
+    expect(find.text('Welcome back, user'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
   });
 
-  testWidgets('signing in from /login redirects to the root route',
+  testWidgets('signing in from /login redirects to the home tab',
       (tester) async {
     final fakeAuthService = await pumpApp(tester);
     expect(find.text('Welcome back'), findsOneWidget);
@@ -71,10 +74,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fakeAuthService.signInCallCount, 1);
-    expect(find.text('Foundation ready'), findsOneWidget);
+    expect(find.text('Welcome back, user'), findsOneWidget);
   });
 
-  testWidgets('signing out redirects back to /login', (tester) async {
+  testWidgets('the bottom nav switches tabs', (tester) async {
     await pumpApp(
       tester,
       initialUser: const AppUser(
@@ -83,9 +86,40 @@ void main() {
         isEmailVerified: true,
       ),
     );
-    expect(find.text('Foundation ready'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Sign out'));
+    // Material 3's NavigationBar keeps a second, differently-styled Text
+    // for each label around for its selection animation, so `find.text`
+    // matches two widgets per destination — `.first` picks either (both
+    // hit the same destination).
+    await tester.tap(find.text('Community').first);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'Community'), findsOneWidget);
+
+    await tester.tap(find.text('Profile').first);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'Profile'), findsOneWidget);
+  });
+
+  testWidgets('signing out from the profile tab redirects back to /login',
+      (tester) async {
+    await pumpApp(
+      tester,
+      initialUser: const AppUser(
+        id: 'u1',
+        email: 'user@example.com',
+        isEmailVerified: true,
+      ),
+    );
+
+    await tester.tap(find.text('Profile').first);
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Sign out'),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
 
     expect(find.text('Welcome back'), findsOneWidget);

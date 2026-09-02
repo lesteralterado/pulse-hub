@@ -7,8 +7,13 @@ import '../../features/auth/presentation/forgot_password_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/sign_up_page.dart';
 import '../../features/auth/presentation/verify_email_page.dart';
-import '../../features/home/presentation/foundation_status_page.dart';
+import '../../features/community/presentation/community_page.dart';
+import '../../features/dashboard/presentation/dashboard_page.dart';
+import '../../features/home/presentation/home_page.dart';
+import '../../features/learning/presentation/learn_page.dart';
+import '../../features/profile/presentation/profile_page.dart';
 import '../constants/app_constants.dart';
+import 'main_shell.dart';
 
 const _authRoutes = {
   AppConstants.routeLogin,
@@ -54,10 +59,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(
-        path: AppConstants.routeRoot,
-        builder: (context, state) => const FoundationStatusPage(),
-      ),
-      GoRoute(
         path: AppConstants.routeLogin,
         builder: (context, state) => const LoginPage(),
       ),
@@ -74,6 +75,52 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => VerifyEmailPage(
           email: state.uri.queryParameters['email'] ?? '',
         ),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            MainShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppConstants.routeHome,
+                builder: (context, state) => const HomePage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppConstants.routeCommunity,
+                builder: (context, state) => const CommunityPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppConstants.routeLearn,
+                builder: (context, state) => const LearnPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppConstants.routeDashboard,
+                builder: (context, state) => const DashboardPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppConstants.routeProfile,
+                builder: (context, state) => const ProfilePage(),
+              ),
+            ],
+          ),
+        ],
       ),
     ],
   );
