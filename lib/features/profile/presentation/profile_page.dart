@@ -5,6 +5,9 @@ import '../../../core/config/startup_info.dart';
 import '../../../core/utils/error_presenter.dart';
 import '../../../core/widgets/empty_state_card.dart';
 import '../../auth/application/auth_providers.dart';
+import '../../learning/application/learning_providers.dart';
+import '../../learning/domain/achievement.dart';
+import '../../learning/domain/course.dart';
 import '../application/profile_providers.dart';
 import '../domain/user_profile.dart';
 
@@ -20,6 +23,8 @@ class ProfilePage extends ConsumerWidget {
     final profileAsync = ref.watch(myProfileProvider);
     final startupInfo = ref.watch(startupInfoProvider);
     final isSigningOut = ref.watch(authControllerProvider).isLoading;
+    final achievementsAsync = ref.watch(myAchievementsProvider);
+    final coursesAsync = ref.watch(coursesProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
@@ -40,17 +45,9 @@ class ProfilePage extends ConsumerWidget {
             message: 'Not in any communities yet.',
           ),
           const SizedBox(height: 12),
-          const EmptyStateCard(
-            title: 'Achievements',
-            icon: Icons.emoji_events_outlined,
-            message: 'No achievements yet.',
-          ),
+          _AchievementsSection(achievementsAsync: achievementsAsync),
           const SizedBox(height: 12),
-          const EmptyStateCard(
-            title: 'Learning progress',
-            icon: Icons.auto_stories_outlined,
-            message: 'No courses started yet.',
-          ),
+          _LearningProgressSection(coursesAsync: coursesAsync),
           const SizedBox(height: 20),
           _AboutSection(
             environment: startupInfo.environment,
@@ -146,6 +143,116 @@ class _ProfileHeader extends StatelessWidget {
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '${date.year}-$month-$day';
+  }
+}
+
+class _AchievementsSection extends StatelessWidget {
+  const _AchievementsSection({required this.achievementsAsync});
+
+  final AsyncValue<List<UserAchievement>> achievementsAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    return achievementsAsync.when(
+      loading: () => const EmptyStateCard(
+        title: 'Achievements',
+        icon: Icons.emoji_events_outlined,
+        message: 'Loading...',
+      ),
+      error: (error, _) => EmptyStateCard(
+        title: 'Achievements',
+        icon: Icons.emoji_events_outlined,
+        message: describeError(error),
+      ),
+      data: (earned) {
+        if (earned.isEmpty) {
+          return const EmptyStateCard(
+            title: 'Achievements',
+            icon: Icons.emoji_events_outlined,
+            message: 'No achievements yet. Complete a lesson to earn your first one.',
+          );
+        }
+        final theme = Theme.of(context);
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Achievements', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: earned.map((userAchievement) {
+                    final achievement = Achievement.byCode(userAchievement.achievementCode);
+                    if (achievement == null) return const SizedBox.shrink();
+                    return Chip(
+                      avatar: Icon(achievement.icon, size: 18),
+                      label: Text(achievement.name),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _LearningProgressSection extends StatelessWidget {
+  const _LearningProgressSection({required this.coursesAsync});
+
+  final AsyncValue<List<Course>> coursesAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    return coursesAsync.when(
+      loading: () => const EmptyStateCard(
+        title: 'Learning progress',
+        icon: Icons.auto_stories_outlined,
+        message: 'Loading...',
+      ),
+      error: (error, _) => EmptyStateCard(
+        title: 'Learning progress',
+        icon: Icons.auto_stories_outlined,
+        message: describeError(error),
+      ),
+      data: (courses) {
+        final started = courses.where((c) => c.isStarted).toList();
+        if (started.isEmpty) {
+          return const EmptyStateCard(
+            title: 'Learning progress',
+            icon: Icons.auto_stories_outlined,
+            message: 'No courses started yet.',
+          );
+        }
+        final theme = Theme.of(context);
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Learning progress', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 12),
+                for (final course in started) ...[
+                  Text(course.title, style: theme.textTheme.bodyMedium),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(value: course.completionRatio),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
