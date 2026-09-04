@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/empty_state_card.dart';
+import '../../wallet/presentation/widgets/wallet_card.dart';
 
 /// The investor dashboard (section 15): BOT Chain, CaryPact and PulseHub
 /// data, kept visually separated so it's clear which system each figure
@@ -17,13 +18,7 @@ class DashboardPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _SectionHeader('BOT Chain'),
-          const EmptyStateCard(
-            title: 'Wallet & balance',
-            icon: Icons.account_balance_wallet_outlined,
-            message:
-                'No wallet connected. Connect a wallet to see your BOT '
-                'balance, assets and recent transactions.',
-          ),
+          const WalletCard(),
           const SizedBox(height: 24),
           _SectionHeader('CaryPact'),
           const EmptyStateCard(
