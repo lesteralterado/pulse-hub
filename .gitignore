@@ -56,4 +56,7 @@ app.*.map.json
 .claude/gate_state.json
 .claude/last_test_output.log
 .claude/last_test_output.log.*.tmp
+.claude/admin_gate_state.json
+.claude/admin_gate_owner.json
+.claude/last_admin_build_output.log
 
