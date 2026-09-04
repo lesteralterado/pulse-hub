@@ -10,10 +10,33 @@
 -- features that need them (Storage-backed attachments, message
 -- reactions), not created empty ahead of time.
 
+create table if not exists public.conversations (
+  id uuid primary key default gen_random_uuid(),
+  is_group boolean not null default false,
+  name text,
+  created_by uuid not null references public.profiles (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.conversation_members (
+  id uuid primary key default gen_random_uuid(),
+  conversation_id uuid not null references public.conversations (id) on delete cascade,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  role text not null default 'member' check (role in ('member', 'owner')),
+  last_read_at timestamptz,
+  joined_at timestamptz not null default now(),
+  unique (conversation_id, user_id)
+);
+
 -- Membership checks need a SECURITY DEFINER helper: a plain USING clause
 -- on conversation_members that subqueries conversation_members itself is
 -- the classic Postgres RLS self-reference trap (recursive policy
 -- evaluation). Routing through this function avoids that.
+--
+-- Defined only after both tables above exist: a `language sql` function
+-- body is parsed and resolved against the catalog at CREATE FUNCTION
+-- time (unlike plpgsql), so referencing conversation_members here before
+-- it's created fails with "relation does not exist".
 create or replace function public.is_conversation_member(
   target_conversation_id uuid,
   target_user_id uuid
@@ -31,14 +54,6 @@ as $$
   );
 $$;
 
-create table if not exists public.conversations (
-  id uuid primary key default gen_random_uuid(),
-  is_group boolean not null default false,
-  name text,
-  created_by uuid not null references public.profiles (id) on delete cascade,
-  created_at timestamptz not null default now()
-);
-
 alter table public.conversations enable row level security;
 
 create policy "Members can view their conversations"
@@ -50,16 +65,6 @@ create policy "Authenticated users can start a conversation"
   on public.conversations for insert
   to authenticated
   with check (created_by = auth.uid());
-
-create table if not exists public.conversation_members (
-  id uuid primary key default gen_random_uuid(),
-  conversation_id uuid not null references public.conversations (id) on delete cascade,
-  user_id uuid not null references public.profiles (id) on delete cascade,
-  role text not null default 'member' check (role in ('member', 'owner')),
-  last_read_at timestamptz,
-  joined_at timestamptz not null default now(),
-  unique (conversation_id, user_id)
-);
 
 alter table public.conversation_members enable row level security;
 
